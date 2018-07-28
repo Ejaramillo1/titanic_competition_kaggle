@@ -16,6 +16,43 @@ dta_conv <- train
 glimpse(train)
 
 
+# Cuantos NA's hay en los datos
+
+sapply(train, function(x){sum(is.na(x))})
+
+
+# Observamos que las variables que tienen mayor cantidad e NA's son las variables
+# "CABIN", "AGE", "EMBARKED" con 687, 177, 2 valores perdidos consecutivamente. 
+
+
+train_dt <- train %>%
+  mutate(Sex = as.factor(Sex),
+         Survived = as.factor(Survived),
+         Pclass = as.ordered(Pclass))
+
+
+# Cuantas personas sobrevivieron a la tragedia del Titanic. 
+
+ggplot(train_dt[!is.na(train_dt$Survived),], aes(x = factor(Survived), fill = factor(Survived))) +
+  geom_bar(stat='count') +
+  labs(x = 'How many people died and survived on the Titanic?') +
+        geom_label(stat='count',aes(label=..count..), size=7) +
+        theme_grey(base_size = 18)
+
+
+
+# Cuantas de las personas por sexo 
+
+
+ggplot(train_dt, aes(x = Sex, fill = Survived)) + 
+  geom_bar(stat = 'count', position = 'dodge') + 
+  theme_grey() +
+  labs(x = 'All data') + 
+  geom_label(stat = 'count', aes(label = ..count..))
+
+
+
+
 # Lo primero que observamos es que doce variables de las cuales 7 variables son 
 # numericas y las otras son cualitativas.
 
