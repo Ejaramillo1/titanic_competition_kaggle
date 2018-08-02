@@ -9,7 +9,78 @@ libraries(my_packages)
 
 
 train <- read_csv("train.csv")
+
+# Observamos la tabla de datos
+
+glimpse(train)
+
+# Recodificamos la variable sexo
+
+rcd_train <- train %>%
+  mutate(Sex = as.numeric(fct_recode(Sex, "1" = "male" , "2" = "female")))
+
+
+# Hay que ver cuales son las variables que tienen más valores perdidos
+
+plot_Missing <- function(data_in, title = NULL){
+  temp_df <- as.data.frame(ifelse(is.na(data_in), 0, 1))
+  temp_df <- temp_df[,order(colSums(temp_df))]  
+  data_temp <- expand.grid(list(x = 1:nrow(temp_df), y = colnames(temp_df)))
+  data_temp$m <- as.vector(as.matrix(temp_df))
+  data_temp <- data.frame(x = unlist(data_temp$x), y = unlist(data_temp$y), m = unlist(data_temp$m))
+  ggplot(data_temp) + geom_tile(aes(x=x, y=y, fill=factor(m))) + 
+    scale_fill_manual(values=c("white", "black"), name="Missing\n(0=Yes, 1=No)") +
+    theme_light() + ylab("") + xlab("") + ggtitle(title)
+}
+
+
+
+plot_Missing(rcd_train)
+
+
+# Observamos
+
+
+View(rcd_train)
+
+
+
 dta_conv <- train
+
+
+
+
+pr <- glm(Survived ~ Pclass + Sex + log(Age) + Fare^2, data = train, family = binomial(link = "logit"))
+
+prob.ajustadas <- predict(pr, type = "response", se.fit = TRUE)
+
+# Valores ajustados
+
+head(prob.ajustadas[[1]])
+
+# prediccion con un punto de corte de .5
+
+prediccion <- ifelse(fitted.values(pr) >= 0.5, 1, 0)
+
+
+length(prediccion)
+
+sin_eda <- train %>%
+  filter(!is.na(Age))
+
+
+
+
+table(sin_eda$Survived, prediccion)
+
+tabla.clasif <- table(sin_eda$Survived, prediccion)
+tcc <- 100 * sum(diag(tabla.clasif))/sum(tabla.clasif)
+tcc
+
+
+
+prediccion
+
 
 # First we have to know what kind of data and the quality that we have. 
 

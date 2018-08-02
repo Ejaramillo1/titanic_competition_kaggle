@@ -1,0 +1,76 @@
+---
+title: "Logit_titanic_survival"
+output: pdf_document
+---
+
+
+# Sobrevivientes del Titanic
+
+Los aspirantes a científicos de datos generalmente somos personas curiosas a las que les gusta navegar por internet buscando recursos que apoyen y consoliden nuestros conocimientos dentro de ésta área del conocimiento.
+
+Un sitio muy popular donde se pueden encontrar mucha información sobre este tema es el sitio web **kaggle.com** en el que se desarrollan competencias respecto a la estimación de modelos econométricos.
+
+La base de datos del Titanic es uno de los primeros pasos para adentrarse en el mundo de la ciencia de datos con muchos recursos a la mano. El objetivo de la base de datos y, la competencia es tratar de predecir si un pasajero sobrevive o no. 
+
+Como en todos los ejercicios primero vamos a cargar los paquetes de funciones que se utilizarán en el ejercicio de estimación.
+
+
+```{r}
+
+library("easypackages")
+my_packages <- c("tidyverse")
+libraries(my_packages)
+
+```
+
+Posteriormente vamos a subir la tabla de datos con la que trabajaremos
+
+```{r}
+
+train <- read_csv("train.csv")
+
+
+```
+
+Luego vamos a dar un vistazo rápido a la base de datos
+
+
+```{r}
+
+glimpse(train)
+
+```
+
+
+Como podemos ver arriba, en nuestra tabla de datos 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
