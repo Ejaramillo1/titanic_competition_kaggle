@@ -42,7 +42,79 @@ glimpse(train)
 ```
 
 
-Como podemos ver arriba, en nuestra tabla de datos 
+Como podemos ver arriba, en nuestra tabla de datos hay doce variables de las cuales **fare**, **Age** y **PassengerId**, las 9 variables más con de tipo categoricas. 
+
+
+Ahora vamos a observar la distribución de las variables cuantitativas.
+
+
+```{r}
+
+train %>%
+  keep(is.numeric) %>%
+  select(Age, Fare) %>%
+  gather() %>%
+  ggplot(aes(x = value)) + 
+  facet_wrap(~key, scales = "free") +
+  geom_histogram(fill = "green")
+
+
+```
+
+Podemos ver por ejemplo que la edad tiene una distribución casi normal con un sezgo positivo, adicionalmente observamos que la tarifa está sezgada hacia la derecha. Observamos también que las variables tienen algunos datos atípicos principalmente la variable **_fare_**. También podemos observar que las variables están en diferentes escalas por lo que les aplicaremos una técnica de normalización llamada **_Z score normalization_** con la función scale 
+
+
+```{r} 
+
+train %>%
+  keep(is.numeric) %>%
+  select(Age, Fare) %>%
+  mutate(Age = scale(Age),
+         Fare = scale(Fare)) %>%
+  gather() %>%
+  ggplot(aes(x=value)) +
+  facet_wrap(~key, scales = "free") +
+  geom_histogram()
+
+
+```
+
+Podemos observar que la variable edad tiene un comportamiento casi normal con algunas exepciones o casos atípicos de personas de avanzada edad. La variable que tiene mayores problemas es Fare. Se observa en el histograma que no tiene un comportamiento normal debido a ciertas variables atípicas. Vamos a confirmar esto con un diagrama de hoja y bigotes que nos permite visualizar de mejor manera las observaciones atípicas. 
+
+```{r} 
+
+train %>%
+  keep(is.numeric) %>%
+  select(Age, Fare) %>%
+  mutate(Age = scale(Age),
+         Fare = scale(Fare)) %>%
+  gather() %>%
+  ggplot(aes(y=value)) +
+  facet_wrap(~key, scales = "free") +
+  geom_boxplot()
+
+
+```
+
+Suponemos que la variable Fare está relacionada con la clase donde viajan los pasajeros, por lo que vamos a observar los valores mínimos, máximos y desviación estándar de las variables. 
+
+
+```{r}
+
+train %>%
+  filter(Fare != 0) %>%
+  group_by(Pclass) %>%
+  summarise(max = max(Fare, na.rm = TRUE), media = mean(Fare, na.rm = TRUE), min = min(Fare, na.rm = TRUE), sd = sd(Fare, na.rm = TRUE))
+
+
+train %>%
+  select(Fare) %>%
+  filter(Fare != 0) %>%
+  arrange(desc(Fare))
+
+
+
+```
 
 
 

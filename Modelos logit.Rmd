@@ -1,0 +1,180 @@
+---
+title: "Modelo logit con datos de Titanic data (Kaggle)"
+output: html_document
+---
+
+Los modelos logit son parte de una familia de ecuaciones/algoritmos/métodos estadísticos para hacer inferencia dentro de la familia de los modelos lineales generalizados.
+
+La particularidad de este modelo es que toma como dependiente una variable binaria. En este caso tomamos los datos de supervivencia del titanic proporcionados por Kaggle para realizar ejercicios de predicción acerca de la supervivencia o no de los pasajeros. El objetivo es predecir con la mayor exactitud la probabilidad que tiene una persona de sobrevivir o no de acuerdo con datos relacionados con su persona y con el viaje. 
+
+
+#Análisis de los datos
+
+Los datos están en dos tablas la primera con una variable que  nos indica si las personas sobrevivieron o no y la segunda donde no viene esa variable y nos ayuda a conocer el desempeño de nuestro análisis. 
+
+Como en todo análisis de datos en el lenguaje R vamos a subir los paquetes de funciones con los que se trabajará
+
+```{r}
+
+library(easypackages)
+my_packages <- c("tidyverse", "knitr", "ROCR")
+libraries(my_packages)
+
+```
+
+Posteriormente subimos la tabla de datos en la que estaremos trabajando
+
+
+```{r}
+
+train <- read_csv("train.csv")
+
+
+```
+
+Vamos a dar un vistaso a la base de datos 
+
+```{r}
+
+glimpse(train)
+
+
+
+```
+
+Como podemos ver arriba, en nuestra tabla de datos hay doce variables de las cuales **fare**, **Age** y **PassengerId** son cualitativas, las 9 variables más con de tipo categóricas. Sin embargo la variable _Pclass_ está mal categorizada por lo que la tenemos que modificar. También tenemos que saber cuales son las variables que tienen más valores perdidos. Esto lo podemos hacer de dos maneras una es graficando los valores perdidos y otra es contándolos. Primero contaremos los valores perdidos y luego los graficamos. 
+
+
+
+```{r}
+
+
+train_md <- train %>%
+  mutate(Pclass = factor(Pclass),
+         Sex = factor(Sex))
+
+sapply(train_md, function(x){sum(is.na(x))})
+
+
+```
+
+Según el conteo, las variables que tienen más valores perdidos son _Age_, _Cabin_ y _Embarked_. Confirmamos esto con la gráfica. 
+
+
+```{r}
+
+plot_Missing <- function(data_in, title = NULL){
+  temp_df <- as.data.frame(ifelse(is.na(data_in), 0, 1))
+  temp_df <- temp_df[,order(colSums(temp_df))]
+  data_temp <- expand.grid(list(x = 1:nrow(temp_df), y = colnames(temp_df)))
+  data_temp$m <- as.vector(as.matrix(temp_df))
+  data_temp <- data.frame(x = unlist(data_temp$x), y = unlist(data_temp$y), m = unlist(data_temp$m))
+  ggplot(data_temp) + geom_tile(aes(x=x, y=y, fill=factor(m))) + 
+    scale_fill_manual(values=c("white", "black"), name="Missing\n(0=Yes, 1=No)") +
+    theme_light() + ylab("") + xlab("") + ggtitle(title)
+}
+
+
+plot_Missing(train_md)
+
+
+```
+
+
+# MODELO CON LAS VARIABLES SIN TRANSFORMAR
+
+
+Podemos decir que tenemos suficiente información para generar un modelo de respuesta cualitativa.
+
+```{r}
+
+mod0 <- glm(Survived ~ Pclass + Sex + Fare  + Parch, family = binomial(link = "logit"), data = train_md)
+
+summary(mod0)
+
+
+```
+
+Según el modelo las variables que tienen mas relevancia son el sexo y la clase en la que viajaban los pasajeros. Podemos evaluar la capacidad predictiva del modelo a través de una tasa de clasificaciones correctas esto lo podemos hacer con la librería **_ROCR_**
+
+```{r}
+
+pred0 <- prediction(fitted.values(mod0), train_md$Survived)
+perf0 <- performance(pred0, measure = "acc")
+
+
+(posicion.max <- sapply(perf0@y.values, which.max))
+(punto.corte <- sapply(perf0@x.values, "[", posicion.max))
+
+```
+
+
+Por lo que podemos observar que la tasa de clasificaciones correctas dentro de nuestro modelo es de aproximadamente 62% esto sin haber modificado las variables. Observamos también que no incluimos la variable edad que tiene 177 valores perdidos. Para saber si incluimos esta variable debemos saber si está relacionada con la supervivencia o no y posteriormente establecer un método para llenar los valores faltantes. 
+
+```{r}
+
+
+train_md %>%
+  select(Age, Survived) %>%
+  gather(key, value, -Survived) %>%
+  ggplot(aes(x = value, fill = factor(Survived))) +
+  geom_histogram()
+
+```
+
+Podemos observar que la supervivencia y la edad son factores que están relacionados. Por ejemplo la probabilidad de sobrevivir es más baja para personas con menor edad. Vamos a evaluar el desempeño de nuestro modelo si introducimos la variable **Edad**
+
+
+
+
+```{r}
+
+no_age_dt <- train_md %>%
+  filter(!is.na(Age))
+
+mod0.1 <- glm(Survived ~ Pclass + Sex + Fare + Parch, family = binomial(link = "logit"), data = no_age_dt)
+
+mod0.2 <- glm(Survived ~ Pclass + Sex + Fare + Parch, family = binomial(link = "logit"), data = no_age_dt)
+
+
+
+summary(mod0.1)
+
+
+pred0.1 <- prediction(fitted.values(mod0.1), no_age_dt$Survived)
+perf0.1 <- performance(pred0.1, measure = "acc")
+
+
+(posicion.max <- sapply(perf0.1@y.values, which.max))
+(punto.corte <- sapply(perf0.1@x.values, "[", posicion.max))
+
+
+
+
+
+pred0.2 <- prediction(fitted.values(mod0.2), no_age_dt$Survived)
+perf0.2 <- performance(pred0.2, measure = "acc")
+
+
+(posicion.max <- sapply(perf0.2@y.values, which.max))
+(punto.corte <- sapply(perf0.2@x.values, "[", posicion.max))
+
+
+
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
