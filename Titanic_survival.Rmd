@@ -276,9 +276,15 @@ De los sobrevivientes podemos observar que la mayor proporción es para mujeres 
 Los hombres la mayor cantidad de sobrevivientes son 47 que viajaban en tercera clase, 45 en primera y 17 en segunda. 
 
 
+Hasta ahora sólo hemos explorado las variables **Pclass**, **Survived** y **Sex** nos falta **Age**, **Fare**, **Cabin**
+
+
+```{r}
 
 
 
+
+```
 
 
 
