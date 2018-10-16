@@ -185,5 +185,208 @@ plot_Missing(train[,colSums(is.na(train)) > 0])
 glimpse(train)
 
 
+```{r}
+
+
+
+
+```
+
+
+
+
+En la siguiente gráfica por ejemplo podemos observar diferentes aspectos relacionados con los pasajeros del Titanic y sus probabilidades de supervivencia. 
+
+En el primer rectángulo están los pasajeros en primera clase, el color turquesa representa la proporción de
+pasajeros que no sobrevivieron y en color naranja la proporcion que si lo hicieron. 
+
+Observamos por ejemplo que si eres un varón y viajas en primera, segunda o tercera clase tienes pocas prosibilidades de sobrevivir sin embargo si hay una diferencia significativa si eres varon y viajas en tercera clase a si eres varon y viajas en primera clase. 
+
+Entonces podemos suponer que las variables sexo y clase son variables relevantes dentro de nuestro análisis.
+
+
+```{r}
+
+
+rf <- randomForest(factor(Survived) ~ Pclass + !is.na(train$Age) , data = train)
+
+plot(rf, ylim=c(0,0.36))
+
+```
+
+
+
+```{r}
+
+ref(train)
+
+contrasts(factor(train$Sex))
+levels(train$Sex)
+```
+
+
+
+Antes de realizar cualquier transformación a los datos vamos a correr una regresión logística para evaluar la capacidad predictiva de las variables que tenemos a la mano y que no tienen valores perdidos, posteriormente vamos a utilizar otras variables haciendo algunos cambios. 
+
+```{r}
+
+mod1 <- glm(Survived ~ Pclass + Sex + Fare + Parch + SibSp  , family = binomial(link = "logit"), data = train)
+
+summary(mod1)
+
+```
+
+Después de correr el modelo obtenemos un resumen del mismo que nos permite observar las variables más relevantes por ejemplo observamos que las variables **Pclass** que se refiere a la clase en la que viajaban los pasajeros, el sexo y si tenían familiares **SibSp** son las variables que tienen una influencia estadísticamente significativa en el modelo de regresión. 
+
+
+```{r}
+confint.default(mod1, level = 0.95)
+
+```
+
+Si el intervalo de confianza incluye el 0, significa que al nivel $alpha$ elegido no se podría rechazar la hipótesis nula de que betar=0. En este caso los intervalos de confianza que incluyen al cero son **Fare**, y **Parch**. 
+
+
+```{r}
+
+
+exp(confint.default(mod1, level = 0.95))
+
+
+```
+
+
+En este caso todas las variables caen dentro del intervalo de confianza. 
+
+# Valores ajustados, predicciones del modelo y residuos
+
+
+En R podemos obtener las probabilidades ajustadas para el modelo las predicciones y los residuos a través de la función **fitted.values** y también la función **predict**
+  
+  ```{r}
+
+head(mod1$fitted.values)
+head(predict(mod1, type = "response"))
+
+
+```
+
+Otra forma de evaluar el modelo es determinar la capacidad de clasificar los casos individuales. 
+
+
+```{r}
+
+
+prediction <- if_else(fitted.values(mod1)>=.5,1,0)
+table(prediction)
+
+
+```
+
+Y la tabla de clasificación sería la siguiente. 
+
+```{r}
+
+table(train$Survived, prediction)
+
+
+```
+
+En este caso tenemos 478 verdaderos positivos, 71 falsos negativos, 110 falsos positivos, 232 verdaderos negativos. 
+
+
+Es decir clasificamos incorrectamente 181 casos. Podemos calcular la tas de clasificaciones correctas de la siguiente manera
+
+
+```{r}
+
+tabla.clasif <- table(train$Survived, prediction)
+tcc <- 100 * sum(diag(tabla.clasif))/sum(tabla.clasif)
+tcc
+
+
+```
+
+tenemos un 79% de clasificaciones correctas según nuestros parámetros de clasificación
+
+Ahora vamos a observar la distribución de las variables cuantitativas.
+
+
+También podemos utilizar la librería **_ROCR_** que nos permitirá analizar varias medidas relacionadas con la tabla de clasificación y, representarla gráficamente. 
+
+
+```{r}
+library(ROCR)
+
+pred <- prediction(fitted.values(mod1), train$Survived)
+
+perf <- performance(pred, measure = "acc")
+
+
+#El punto de corte que maximiza "acc" es
+
+(posicion.max <- sapply(perf@y.values, which.max))
+
+
+(punto.corte <- sapply(perf@x.values, "[", posicion.max))
+
+
+```
+
+Podemos obtener una gráfica con la tasa de clasificaciones correctas. 
+
+
+```{r}
+plot(perf, col = "darkred")
+abline(h = 0.8, lty = 2)
+abline(v=punto.corte, lty = 2)
+```
+
+
+
+Otra forma de evaluar al modelo es representar la fraccion de falsos positivos a través de la curva ROC. Se considera que un modelo es mejor que otro si la curva ROC se acerca al borde superior izquierdo o lo que es lo mismo, que el área bajo la curva se a mayor. 
+
+
+```{r}
+
+AUC <- performance(pred, "auc")
+AUC@y.values
+
+
+```
+
+
+```{r}
+
+perf <- performance(pred, "tpr", "fpr")
+plot(perf2, colorize = TRUE)
+abline(a=0, b=1)
+text(0.4, 0.6, paste(AUC@y.name, "\n", round(unlist(AUC@y.values), 3)), cex = 0.7)
+
+```
+
+
+
+Podemos representar en un mismo gráfico en un mismo gráfico las curvas ROC de diferentes modelos, lo que permite una comparación rápida de la eficacia de cada modelo. 
+
+
+
+```{r}
+mod2 <- glm(Survived ~ Pclass  , family = binomial(link = "logit"), data = train)
+
+pred2 <- prediction(fitted.values(mod2), train$Survived)
+
+perf3 <- performance(pred2, measure = "tpr", "fpr")
+plot(perf2, col = "darkred")
+abline(a = 0, b = 1)
+plot(perf3, col = "darkblue", lty = 2, add = TRUE)
+
+
+```
+
+Ya observamos que las variables disponibles dentro del modelo nos permiten realizar predicciones acerca de los pasajeros del Titanic, sin embargo no hemos realizado un análisis a profundidad de las mismas para saber de qué manera se comportan. Y posterior a las transformaciones vemos si mejoran el modelo las variables que estamos utilizando actualmente son _Pclass_, _Sex_, _Fare_, _Parch_, _SibSp_ 
+
+
+
 
 

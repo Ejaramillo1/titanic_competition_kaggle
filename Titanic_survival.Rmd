@@ -1,21 +1,24 @@
 ---
-title: "Logit_titanic_survival"
-output: pdf_document
+output:
+  html_document:
+    df_print: paged
 ---
 
 
-# Sobrevivientes del Titanic
+# Sobrevivientes del Titanic parte I
+## Análisis exploratorio
 
-Los aspirantes a científicos de datos generalmente somos personas curiosas a las que les gusta navegar por internet buscando recursos que apoyen y consoliden nuestros conocimientos dentro de ésta área del conocimiento.
+Los aspirantes a científicos de datos generalmente somos personas curiosas a las que les gusta navegar por internet buscando recursos que apoyen y consoliden nuestros conocimientos.
 
-Un sitio muy popular donde se pueden encontrar mucha información sobre este tema es el sitio web **kaggle.com** en el que se desarrollan competencias respecto a la estimación de modelos econométricos.
+Un sitio muy popular donde se pueden encontrar mucha información sobre este tema es el sitio web **kaggle.com** en el que se desarrollan competencias entre personas apasionadas por los datos con el objetivo de generar los mejores modelos en función de las características particulares de cada conjunto de datos.
 
-La base de datos del Titanic es uno de los primeros pasos para adentrarse en el mundo de la ciencia de datos con muchos recursos a la mano. El objetivo de la base de datos y, la competencia es tratar de predecir si un pasajero sobrevive o no. 
+La base de datos del Titanic es uno de los primeros pasos para adentrarse en el mundo de la ciencia de datos desde el aprendizaje en ésta página **Kaggle** con muchos recursos a la mano. El objetivo de la base de datos y, la competencia es tratar de predecir si un pasajero sobrevive o no. 
 
 Como en todos los ejercicios primero vamos a cargar los paquetes de funciones que se utilizarán en el ejercicio de estimación.
 
 
-```{r}
+```{r warning=FALSE, message=FALSE}
+
 library("easypackages")
 my_packages <- c("tidyverse", "knitr")
 libraries(my_packages)
@@ -24,7 +27,7 @@ libraries(my_packages)
 
 Posteriormente vamos a subir la tabla de datos con la que trabajaremos
 
-```{r}
+```{r warning=FALSE, message=FALSE}
 
 train <- read_csv("train.csv")
 test <- read_csv("test.csv")
@@ -32,31 +35,49 @@ test <- read_csv("test.csv")
 
 ```
 
+
+Para no tener que hacer el proceso de limpieza dos veces vamos a unir las bases de datos train and test, así tendremos los mismos parámetros 
+
+
+
+```{r}
+
+test$Survived <- NA
+
+all <- rbind(train, test)
+
+```
+
+
+
 Vamos a echar una ojeada a la tabla de datos para saber como están compuestas las variables. 
 
 
-```{r}
+```{r warning=FALSE, message=FALSE}
 
-glimpse(train)
-
-```
-
-
-Como podemos ver arriba, en nuestra tabla de datos hay doce variables de las cuales **fare**, **Age** y **PassengerId**, las 9 variables más con de tipo categoricas sin embargo la variable **Pclass** está como un entero o variable numérica por lo que debemos recodificarla para obtener resultados satisfactorios. 
-
-Una de las tareas principales al realizar análisis estadístico es conocer la base de datos y las relaciones entre las variables y también los valores perdidos. 
-
-```{r}
-
-sapply(train, function(x){sum(is.na(x))})
+glimpse(all)
 
 ```
 
 
-Según el conteo, las variables que tienen más valores perdidos son _Age_, _Cabin_ y _Embarked_. Confirmamos esto con la gráfica. 
+Como podemos ver arriba, en nuestra tabla de datos hay doce variables de las cuales **Fare**, **Age** y **PassengerId**, las 9 variables más con de tipo categoricas sin embargo la variable **Pclass** está como un entero o variable numérica por lo que debemos recodificarla para obtener resultados satisfactorios. 
+
+Una de las tareas principales al realizar análisis estadístico es conocer la base de datos y las relaciones entre las variables y también los valores perdidos. Para esto aplicaremos una función que nos ayudará a contar los valores perdidos en cada una de las columnas en nuestra tabla de datos. 
+
+```{r warning=FALSE, message=FALSE}
+
+sapply(all, function(x){sum(is.na(x))})
+
+```
 
 
-```{r}
+Según el conteo, las variables que tienen más valores perdidos son _Age_, _Cabin_ y _Embarked_. Confirmamos esto de manera gráfica con una función que nos ayuda a visualizar los valores perdidos de mejor manera. 
+
+
+
+# Explorando algunas de las variables más importantes
+
+```{r warning=FALSE, message=FALSE}
 
 plot_Missing <- function(data_in, title = NULL){
   temp_df <- as.data.frame(ifelse(is.na(data_in), 0, 1))
@@ -70,16 +91,199 @@ plot_Missing <- function(data_in, title = NULL){
 }
 
 
-plot_Missing(train_md)
+plot_Missing(all)
 
 
 ```
 
-Confirmamos por lo tanto que las variables con mayor número de valores perdidos son la edad, la cabina y el lugar en el que se embarcaron. 
 
-```{r}
+
+Confirmamos por lo tanto que las variables con mayor número de valores perdidos son la edad, la cabina y el lugar en el que se embarcaron, por otro lado la variable **Survived** muestra una gran cantidad de valores perdidos, esto se da principalmente por que unimos la tabla de datos de entrenamiento y de modelado.
+
+## Exploración de la variable respuesta: Survived
+
+Iniciamos la exploración de la tabla de datos analizando el comportamiento de la variable respuesta, en este caso de trata de una variable dicotómica que indica si la presona en cuestión sobrevivió o no.
+
+
+```{r warning=FALSE, message=FALSE}
+
+all %>%
+  select(Sex, Survived, Pclass) %>%
+  filter(!is.na(Survived)) %>%
+  group_by(Survived, Sex) %>%
+  summarise(n()) %>%
+  ggplot(aes(x = factor(Survived) , y = `n()`)) +
+  geom_bar(stat = "identity", aes(fill = factor(Survived))) +
+  geom_label(aes(label = `n()`)) +
+  facet_wrap(~Sex)
+
+
+```
+
+Vamos a ver ahora en qué clase viajaban una mayor cantidad de personas. 
+
+```{r warning=FALSE, message=FALSE}
+
+all %>%
+  group_by(Pclass) %>%
+  summarise(prcount = n()) %>%
+  ggplot(aes(Pclass, prcount)) + 
+  geom_bar(stat = "identity", aes(fill = factor(Pclass) )) + 
+  geom_label(aes(label = prcount)) +
+  theme_classic()
+
+```
+
+Observamos que la mayor cantidad de personas viajan en tercera clase. Superando sustancialmente a segunda y primera clase. 
+
+Posteriormente 
+```{r warning=FALSE, message=FALSE}
+
+all %>%
+  filter(!is.na(Survived)) %>%
+  select(Sex, Survived, Pclass) %>% 
+  group_by(Sex, Survived, Pclass) %>%
+  summarise(prcount = n()) %>%
+  arrange(desc(prcount)) %>%
+  ggplot(aes(x = Sex, y = prcount)) + 
+  geom_bar(stat = "identity", aes(fill = factor(Pclass))) +
+  facet_grid(~Survived)
+
+```
+
+En la gráfica anterior mostramos otros datos interesantes que nos pueden dar luz acerca de la supervivencia al hundimiento. En ésta gráfica los colores representan el sexo, la división de las gráficas en tres partes representa la clase en la que viajaban los pasajeros, las barras que están encima del cero son los que no sobrevivieron  y las que están encima del uno son los que no sobrevivieron. 
+
+
+Por ejemplo vamos a comparar las barras que se encuentran encima del número cero de color azúl, o sea hombres que no sobrevivieron. 
+
+Vemos que la mayor cantidad de hombres que no sobrevivieron se encuentran en tercera clase luego segunda clase y al final primera clase. Los datos los observamos en la tabla de abajo. 
+
+Del total de hombres que no sobrevivieron 300 viajaban en tercera clase, 91 en segunda clase y 77 en primera clase. Por lo que podemos inferir que debido a la gran diferencia entre las varaibles éste puede ser un predictor importante
+
+```{r warning=FALSE, message=FALSE}
+
+all %>%
+  select(Sex, Survived, Pclass) %>%
+  group_by(Sex, Survived, Pclass) %>%
+  summarise(n()) %>%
+  arrange(desc(`n()`)) %>%
+  filter(Survived == 1) %>%
+  spread(Pclass, `n()`) %>%
+  rename(., 
+         "Primera Clase" = `1` , "Segunda Clase" = `2`, "Tercera clase" = `3`) %>%
+  ungroup() %>%
+  select(-Survived) %>%
+  kable()
+```
+
+
+
+Ahora que sucedió con las mujeres que no sobrevivieron de acuerdo a la clase en la que viajaban. 
+
+
+```{r warning=FALSE, message=FALSE}
+
+all %>%
+  select(Sex, Survived, Pclass) %>%
+  group_by(Sex, Survived, Pclass) %>%
+  summarise(n()) %>%
+  arrange(desc(`n()`)) %>%
+  filter(Survived == 0)%>%
+  spread(Pclass, `n()`) %>%
+  rename(., 
+         "Primera Clase" = `1` , "Segunda Clase" = `2`, "Tercera clase" = `3`) %>%
+  ungroup() %>%
+  select(-Survived) %>%
+  kable()
+
+```
+
+Se observa que la mayor cantidad de mujeres que no sobrevivieron al accidente se encontraban en tercera clase, luego las que viajan en segunda y al final primera clase. Recordemos que una de las causas de la tragedia y a que las personas que sobrevivieron fueron tan pocas es por que no había suficientes barcos salvavidas. Lo que nos hace suponer que se les daba preferencia a las mujeres y, particularmente a las que viajaban en primera clase. 
+
+
+
+```{r warning= FALSE, message=FALSE}
 
 train %>%
+  select(Sex, Survived, Pclass) %>%
+  group_by(Sex, Survived, Pclass) %>%
+  summarise(n()) %>%
+  filter(Survived == 1) %>%
+  arrange(desc(`n()`)) %>%
+  kable()
+
+
+
+```
+
+De los sobrevivientes podemos observar que la mayor proporción es para mujeres en primera clase, posteriormente mujeres en tercera y al final mujeres en segunda clase. 
+
+Los hombres la mayor cantidad de sobrevivientes son 47 que viajaban en tercera clase, 45 en primera y 17 en segunda. 
+
+
+```{r warning= FALSE, message=FALSE}
+
+train %>%
+  select(Sex, Survived, Pclass) %>%
+  group_by(Sex, Survived, Pclass) %>%
+  summarise(n()) %>%
+  filter(Survived == 0) %>%
+  arrange(desc(`n()`)) %>%
+  ggplot() +
+  geom_bar(aes(x = Pclass, y = `n()`, fill = factor(Pclass)), stat = "identity") + 
+  facet_wrap(~Sex)
+
+
+
+```
+
+El desarrollador del kernel que estamos siguiendo indica que, si bien se puede tratar como predictores separados el sexo y la clase, es una buena práctica unirlos  en una sola variable lo que nos dará una variable que 
+
+
+
+
+
+
+
+
+
+
+
+Hasta ahora sólo hemos explorado las variables **Pclass**, **Survived** y **Sex** nos falta **Age**, **Fare**, **Cabin** como esta tabla de datos ya fue ampliamente explorada por diferenes analistas en la competencia de Kaggle una de las recomendaciones en uno de los kernels creado por **Erick Bruin**, otra modificación que normamente se le realiza al dataset es extraer el título de la persona que viajaba, 
+
+```{r warning= FALSE, message=FALSE}
+
+
+train <- train %>%
+  mutate(pr = factor(if_else(.$Pclass == '1' & .$Sex == 'male',"P1Male", 
+                      if_else(.$Pclass == '2' & .$Sex == 'male', "P2Male", 
+                              if_else(.$Pclass == '3' & .$Sex == 'male', "P3Male",
+                                      if_else(.$Pclass == 1 & .$Sex == 'female', "P1Female", 
+                                              if_else(.$Pclass == 2 & .$Sex == 'female', "P2Female", 
+                                                      if_else(.$Pclass == 3 & .$Sex == "female", "P3Female", "na"))))))),
+         title = gsub('(.*,)|(\\..*)', '', .$Name))
+
+table(train$Sex, train$title)
+
+```
+
+
+
+
+
+En la gráfica anterior observamos diferentes cosas pero primero tenemos que explicar cómo se lee. 
+
+1. Los colores representan si la persona sobrevivió o no, Es rojo si la persona **no sobrevivió** y azúl si la persona **sobrevivió**
+
+2. La gráfica está dividida en dos, del lado derecho están las mujeres y del lado izquierdo los hombres.
+
+Por ejemplo observamos que del lado derecho la barra de color rojo muestra el número 81 y del lado izquierdo muestra 468. Esto quiere decir que, de acuerdo con los datos que tenemos en la tabla test 81 mujeres murieron contra 468 hombres. Esto nos muestra que la variable sexo es un predictor importante debido a la tasa desproporcionada de supervivencia deacuerdo al sexo.
+
+Ahora vamos a proseguir con una inspección gráfica de las variables cuantitativas, que son la **Edad (AGE)**  y la **Tarifa (Fare)** 
+
+```{r warning=FALSE, message=FALSE}
+
+all %>%
   keep(is.numeric) %>%
   select(Age, Fare) %>%
   gather() %>%
@@ -89,9 +293,9 @@ train %>%
 
 ```
 
-Podemos ver por ejemplo que la edad tiene una distribución casi normal con un sezgo positivo, adicionalmente observamos que la tarifa está sezgada hacia la derecha. Observamos también que las variables tienen algunos datos atípicos principalmente la variable **_fare_**. También podemos observar que las variables están en diferentes escalas por lo que les aplicaremos una técnica de normalización llamada **_Z score normalization_** con la función scale 
+Podemos ver por ejemplo que la edad tiene una distribución casi normal con un sezgo positivo, adicionalmente observamos que la tarifa está sezgada hacia la derecha. Observamos también que las variables tienen algunos datos atípicos principalmente la variable **_fare_**.
 
-```{r} 
+```{r warning=FALSE, message=FALSE} 
 
 train %>%
   keep(is.numeric) %>%
@@ -100,7 +304,7 @@ train %>%
          Fare = scale(Fare)) %>%
   gather(key = "key", value = "value", -Pclass) %>%
   ggplot(aes(x= value, fill = factor(Pclass))) +
-  geom_histogram() +
+  geom_density() +
   facet_wrap(~key, scales = "free")  +
   theme_classic()
 
@@ -109,7 +313,7 @@ train %>%
 
 Podemos observar que la variable edad tiene un comportamiento casi normal con algunas exepciones o casos atípicos de personas de avanzada edad. La variable que tiene mayores problemas es Fare. Se observa en el histograma que no tiene un comportamiento normal debido a ciertas variables atípicas. Vamos a confirmar esto con un diagrama de hoja y bigotes que nos permite visualizar de mejor manera las observaciones atípicas. 
 
-```{r} 
+```{r warning=FALSE, message=FALSE} 
 
 train %>%
   keep(is.numeric) %>%
@@ -126,14 +330,13 @@ train %>%
 ```
 
 
-En la gráfica anterior podemos observar dos gráficas de caja y bigotes para las variables **Age** y **Fare** observamos que, como es natural suponer el ticket promedio en primera clase es en promedio más alto que en las dos clases. En tercera clase tenemos algunos tickets que superan el promedio de primera clase. Así mismo observamos un dato importante, en promedio las personas viajando en primera clase son de mayor edad que las de segunda y tercera clase. 
-
+Las dos gráficas de caja y bigotes para las variables **Age** y **Fare** se observa que el ticket en primera clase es en promedio más alto que en las dos clases. En tercera clase tenemos algunos tickets que superan el promedio de primera clase. Así mismo observamos un dato importante, en promedio las personas viajando en primera clase son de mayor edad que las de segunda y tercera clase. 
 
 
 Suponemos que la variable Fare está relacionada con la clase donde viajan los pasajeros, por lo que vamos a observar los valores mínimos, máximos y desviación estándar de las variables. 
 
 
-```{r}
+```{r warning=FALSE, message=FALSE}
 
 train %>%
   filter(Fare != 0) %>%
@@ -163,374 +366,16 @@ Hasta ahora hemos observado varias características significativas en las variab
 
 3. En promedio la tarifa pagada por las personas viajando en primera clase es mayor. Sin embargo tienen una distribución más sezgada y con valores atípicos. 
 
-Vamos a ver ahora en qué clase viajaban una mayor cantidad de personas. 
 
-```{r}
-train %>%
-  group_by(Pclass) %>%
-  summarise(prcount = n()) %>%
-  ggplot(aes(Pclass, prcount)) + 
-  geom_bar(stat = "identity") + 
-  geom_label(aes(label = prcount)) +
-  theme_classic()
 
-```
 
-Observamos que la mayor cantidad de personas viajan en tercera clase. Superando sustancialmente a segunda y primera clase. 
 
 
-```{r}
 
-train %>%
-  select(Sex, Survived, Pclass) %>%
-  group_by(Survived, Sex) %>%
-  summarise(n()) %>%
-  ggplot(aes(x = factor(Survived) , y = `n()`)) +
-  geom_bar(stat = "identity", aes(fill = factor(Survived))) +
-  geom_label(aes(label = `n()`)) +
-  facet_wrap(~Sex)
 
 
-```
 
-En la gráfica anterior observamos diferentes cosas pero primero tenemos que explicar cómo se lee. 
 
-1. Los colores representan si la persona sobrevivió o no, Es rojo si la persona **no sobrevivió** y azúl si la persona **sobrevivió**
 
-2. La gráfica está dividida en dos, del lado derecho están las mujeres y del lado izquierdo los hombres.
-
-
-Por ejemplo observamos que del lado derecho la barra de color rojo muestra el número 81 y del lado izquierdo muestra 468. Esto quiere decir que, de acuerdo con los datos que tenemos en la tabla test 81 mujeres murieron contra 468 hombres. Esto nos muestra que la variable sexo es un predictor importante debido a la tasa desproporcionada de supervivencia deacuerdo al sexo. 
-
-```{r}
-
-train %>%
-  select(Sex, Survived, Pclass) %>%
-  group_by(Sex, Survived, Pclass) %>%
-  summarise(n()) %>%
-  ggplot(aes(x = factor(Survived), y = `n()`)) +
-  geom_bar(stat = "identity", aes(fill = Sex)) + 
-  facet_wrap(~Pclass)
-
-
-
-
-```
-
-En la gráfica anterior mostramos otros datos interesantes que nos pueden dar luz acerca de la supervivencia al hundimiento. En ésta gráfica los colores representan el sexo, la división de las gráficas en tres partes representa la clase en la que viajaban los pasajeros, las barras que están encima del cero son los que no sobrevivieron  y las que están encima del uno son los que no sobrevivieron. 
-
-
-Por ejemplo vamos a comparar las barras que se encuentran encima del número cero de color azúl, o sea hombres que no sobrevivieron. 
-
-Vemos que la mayor cantidad de hombres que no sobrevivieron se encuentran en tercera clase luego segunda clase y al final primera clase. Los datos los observamos en la tabla de abajo. 
-
-Del total de hombres que no sobrevivieron 300 viajaban en tercera clase, 91 en segunda clase y 77 en primera clase. Por lo que podemos inferir que debido a la gran diferencia entre las varaibles éste puede ser un predictor importante
-```{r}
-
-train %>%
-  select(Sex, Survived, Pclass) %>%
-  group_by(Sex, Survived, Pclass) %>%
-  summarise(n()) %>%
-  arrange(desc(`n()`)) %>%
-  filter(Survived == 0 & Sex %in% "male") %>%
-  kable()
-
-
-```
-
-Ahora que sucedió con las mujeres que no sobrevivieron de acuerdo a la clase en la que viajaban. 
-
-
-```{r}
-
-train %>%
-  select(Sex, Survived, Pclass) %>%
-  group_by(Sex, Survived, Pclass) %>%
-  summarise(n()) %>%
-  arrange(desc(`n()`)) %>%
-  filter(Survived == 0 & Sex %in% "female") %>%
-  kable()
-
-```
-
-Se observa que la mayor cantidad de mujeres que no sobrevivieron al accidente se encontraban en tercera clase, luego las que viajan en segunda y al final primera clase. Recordemos que una de las causas de la tragedia y a que las personas que sobrevivieron fueron tan pocas es por que no había suficientes barcos salvavidas. Lo que nos hace suponer que se les daba preferencia a las mujeres y, particularmente a las que viajaban en primera clase. 
-
-
-
-```{r}
-
-train %>%
-  select(Sex, Survived, Pclass) %>%
-  group_by(Sex, Survived, Pclass) %>%
-  summarise(n()) %>%
-  filter(Survived == 1) %>%
-  arrange(desc(`n()`)) %>%
-  kable()
-
-
-
-```
-
-De los sobrevivientes podemos observar que la mayor proporción es para mujeres en primera clase, posteriormente mujeres en tercera y al final mujeres en segunda clase. 
-
-Los hombres la mayor cantidad de sobrevivientes son 47 que viajaban en tercera clase, 45 en primera y 17 en segunda. 
-
-
-Hasta ahora sólo hemos explorado las variables **Pclass**, **Survived** y **Sex** nos falta **Age**, **Fare**, **Cabin**
-
-
-```{r}
-
-
-
-
-```
-
-
-
-
-En la siguiente gráfica por ejemplo podemos observar diferentes aspectos relacionados con los pasajeros del Titanic y sus probabilidades de supervivencia. 
-
-En el primer rectángulo están los pasajeros en primera clase, el color turquesa representa la proporción de
-pasajeros que no sobrevivieron y en color naranja la proporcion que si lo hicieron. 
-
-Observamos por ejemplo que si eres un varón y viajas en primera, segunda o tercera clase tienes pocas prosibilidades de sobrevivir sin embargo si hay una diferencia significativa si eres varon y viajas en tercera clase a si eres varon y viajas en primera clase. 
-
-Entonces podemos suponer que las variables sexo y clase son variables relevantes dentro de nuestro análisis.
-
-
-```{r}
-
-
-rf <- randomForest(factor(Survived) ~ Pclass + !is.na(train$Age) , data = train)
-
-plot(rf, ylim=c(0,0.36))
-
-```
-
-
-
-```{r}
-
-ref(train)
-
-contrasts(factor(train_md$Sex))
-levels(train_md$Sex)
-```
-
-
-
-Antes de realizar cualquier transformación a los datos vamos a correr una regresión logística para evaluar la capacidad predictiva de las variables que tenemos a la mano y que no tienen valores perdidos, posteriormente vamos a utilizar otras variables haciendo algunos cambios. 
-
-```{r}
-
-mod1 <- glm(Survived ~ Pclass + Sex + Fare + Parch + SibSp  , family = binomial(link = "logit"), data = train)
-
-summary(mod1)
-
-```
-
-Después de correr el modelo obtenemos un resumen del mismo que nos permite observar las variables más relevantes por ejemplo observamos que las variables **Pclass** que se refiere a la clase en la que viajaban los pasajeros, el sexo y si tenían familiares **SibSp** son las variables que tienen una influencia estadísticamente significativa en el modelo de regresión. 
-
-
-```{r}
-confint.default(mod1, level = 0.95)
-
-```
-
-Si el intervalo de confianza incluye el 0, significa que al nivel $alpha$ elegido no se podría rechazar la hipótesis nula de que betar=0. En este caso los intervalos de confianza que incluyen al cero son **Fare**, y **Parch**. 
-
-
-```{r}
-
-
-exp(confint.default(mod1, level = 0.95))
-
-
-```
-
-
-En este caso todas las variables caen dentro del intervalo de confianza. 
-
-# Valores ajustados, predicciones del modelo y residuos
-
-
-En R podemos obtener las probabilidades ajustadas para el modelo las predicciones y los residuos a través de la función **fitted.values** y también la función **predict**
-
-```{r}
-
-head(mod1$fitted.values)
-head(predict(mod1, type = "response"))
-
-
-```
-
-Otra forma de evaluar el modelo es determinar la capacidad de clasificar los casos individuales. 
-
-
-```{r}
-
-
-prediction <- if_else(fitted.values(mod1)>=.5,1,0)
-table(prediction)
-
-
-```
-
-Y la tabla de clasificación sería la siguiente. 
-
-```{r}
-
-table(train$Survived, prediction)
-
-
-```
-
-En este caso tenemos 478 verdaderos positivos, 71 falsos negativos, 110 falsos positivos, 232 verdaderos negativos. 
-
-
-Es decir clasificamos incorrectamente 181 casos. Podemos calcular la tas de clasificaciones correctas de la siguiente manera
-
-
-```{r}
-
-tabla.clasif <- table(train$Survived, prediction)
-tcc <- 100 * sum(diag(tabla.clasif))/sum(tabla.clasif)
-tcc
-
-
-```
-
-tenemos un 79% de clasificaciones correctas según nuestros parámetros de clasificación
-
-Ahora vamos a observar la distribución de las variables cuantitativas.
-
-
-También podemos utilizar la librería **_ROCR_** que nos permitirá analizar varias medidas relacionadas con la tabla de clasificación y, representarla gráficamente. 
-
-
-```{r}
-library(ROCR)
-
-pred <- prediction(fitted.values(mod1), train$Survived)
-
-perf <- performance(pred, measure = "acc")
-
-
-#El punto de corte que maximiza "acc" es
-
-(posicion.max <- sapply(perf@y.values, which.max))
-
-
-(punto.corte <- sapply(perf@x.values, "[", posicion.max))
-
-
-```
-
-Podemos obtener una gráfica con la tasa de clasificaciones correctas. 
-
-
-```{r}
-plot(perf, col = "darkred")
-abline(h = 0.8, lty = 2)
-abline(v=punto.corte, lty = 2)
-```
-
-
-
-Otra forma de evaluar al modelo es representar la fraccion de falsos positivos a través de la curva ROC. Se considera que un modelo es mejor que otro si la curva ROC se acerca al borde superior izquierdo o lo que es lo mismo, que el área bajo la curva se a mayor. 
-
-
-```{r}
-
-AUC <- performance(pred, "auc")
-AUC@y.values
-
-
-```
-
-
-```{r}
-
-perf <- performance(pred, "tpr", "fpr")
-plot(perf2, colorize = TRUE)
-abline(a=0, b=1)
-text(0.4, 0.6, paste(AUC@y.name, "\n", round(unlist(AUC@y.values), 3)), cex = 0.7)
-
-```
-
-
-
-Podemos representar en un mismo gráfico en un mismo gráfico las curvas ROC de diferentes modelos, lo que permite una comparación rápida de la eficacia de cada modelo. 
-
-
-
-```{r}
-mod2 <- glm(Survived ~ Pclass  , family = binomial(link = "logit"), data = train)
-
-pred2 <- prediction(fitted.values(mod2), train$Survived)
-
-perf3 <- performance(pred2, measure = "tpr", "fpr")
-plot(perf2, col = "darkred")
-abline(a = 0, b = 1)
-plot(perf3, col = "darkblue", lty = 2, add = TRUE)
-
-
-```
-
-Ya observamos que las variables disponibles dentro del modelo nos permiten realizar predicciones acerca de los pasajeros del Titanic, sin embargo no hemos realizado un análisis a profundidad de las mismas para saber de qué manera se comportan. Y posterior a las transformaciones vemos si mejoran el modelo las variables que estamos utilizando actualmente son _Pclass_, _Sex_, _Fare_, _Parch_, _SibSp_ 
-
-
-```{r}
-
-train %>%
-  select(Pclass, Survived) %>%
-  group_by(Pclass) %>%
-  summarise(surv_by_class = n()) %>%
-  kable()
-
-```
-
-Observamor que _Pclass_ el programa la lee como una variable numérica sin embargo es una variable cualitativa que indica la clase en la que viajaban los pasajeros. Por lo tanto la vamos a convertir en variable dummy y meterla así en el modelo
-
-
-```{r}
-
-train_dmmy <- train %>%
-  mutate(Pclass = factor(Pclass))
-
-
-```
-
-Ahora crearemos otro modelo y lo comparamos con los pasados
-
-
-```{r}
-
-
-mod3 <- glm(Survived ~ Pclass + Sex + log(Fare + Parch + SibSp  , family = binomial(link = "logit"), data = train_dmmy)
-
-
-
-pred <- prediction(fitted.values(mod1), train$Survived)
-
-perf <- performance(pred, measure = "acc")
-
-
-#El punto de corte que maximiza "acc" es
-
-(posicion.max <- sapply(perf@y.values, which.max))
-
-
-(punto.corte <- sapply(perf@x.values, "[", posicion.max))
-
-
-pred3 <- prediction(fitted.values(mod2), train$Survived)
-
-perf3 <- performance(pred3, measure = "tpr", "fpr")
-plot(perf2, col = "darkred")
-abline(a = 0, b = 1)
-plot(perf3, col = "darkblue", lty = 2, add = TRUE)
-```
 
 
