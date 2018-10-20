@@ -75,7 +75,7 @@ plot_Missing <- function(data_in, title = NULL){
 }
 
 
-plot_Missing(train_md)
+plot_Missing(all)
 
 
 ```

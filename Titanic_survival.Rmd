@@ -204,17 +204,26 @@ Se observa que la mayor cantidad de mujeres que no sobrevivieron al accidente se
 
 ```{r warning= FALSE, message=FALSE}
 
-train %>%
+all %>%
   select(Sex, Survived, Pclass) %>%
   group_by(Sex, Survived, Pclass) %>%
   summarise(n()) %>%
   filter(Survived == 1) %>%
-  arrange(desc(`n()`)) %>%
+  spread(Pclass, `n()`) %>%
+  rename(., "Primera Clase" = `1`, "Segunda Clase" = `2`, "Tercera Clase" = `3`) %>%
+  ungroup() %>%
+  select(-Survived) %>%
   kable()
 
 
 
 ```
+
+Si analizamos por otro lado los sobrevivientes por sexo y clase en la que viajaban podemos observar que hay un comportamiento homogéneo en las mujeres es decir, no importa en qué clase viajes  es más probable que sobrevivas que un hombre. 
+
+Por otro lado los hombres que menos sobrevivieron son los que se encontraban en segunda clase, siendo esto diferente para los de tercera y primera clase, sin embargo no sabesmos si esto es natural hablando en porcentajes en función del numero de pasajeros del mismo sexo por clase. 
+
+
 
 De los sobrevivientes podemos observar que la mayor proporción es para mujeres en primera clase, posteriormente mujeres en tercera y al final mujeres en segunda clase. 
 
@@ -223,11 +232,11 @@ Los hombres la mayor cantidad de sobrevivientes son 47 que viajaban en tercera c
 
 ```{r warning= FALSE, message=FALSE}
 
-train %>%
+all %>%
   select(Sex, Survived, Pclass) %>%
   group_by(Sex, Survived, Pclass) %>%
   summarise(n()) %>%
-  filter(Survived == 0) %>%
+  filter(Survived == 1) %>%
   arrange(desc(`n()`)) %>%
   ggplot() +
   geom_bar(aes(x = Pclass, y = `n()`, fill = factor(Pclass)), stat = "identity") + 
@@ -237,47 +246,87 @@ train %>%
 
 ```
 
-El desarrollador del kernel que estamos siguiendo indica que, si bien se puede tratar como predictores separados el sexo y la clase, es una buena práctica unirlos  en una sola variable lo que nos dará una variable que 
+El desarrollador del kernel que estamos siguiendo indica que, si bien se puede tratar como predictores separados el sexo y la clase, es una buena práctica unirlos  en una sola variable lo que nos permitirá minimizar los problemas de autocorrelación, adicionalmente en el mismo pedazo de código añadimos una variable extra en la que se extrae el título con el que se le nombrabró al pasajero en cuestión.
 
-
-
-
-
-
-
-
-
-
-
-Hasta ahora sólo hemos explorado las variables **Pclass**, **Survived** y **Sex** nos falta **Age**, **Fare**, **Cabin** como esta tabla de datos ya fue ampliamente explorada por diferenes analistas en la competencia de Kaggle una de las recomendaciones en uno de los kernels creado por **Erick Bruin**, otra modificación que normamente se le realiza al dataset es extraer el título de la persona que viajaba, 
 
 ```{r warning= FALSE, message=FALSE}
 
 
-train <- train %>%
+all <- all %>%
   mutate(pr = factor(if_else(.$Pclass == '1' & .$Sex == 'male',"P1Male", 
                       if_else(.$Pclass == '2' & .$Sex == 'male', "P2Male", 
                               if_else(.$Pclass == '3' & .$Sex == 'male', "P3Male",
                                       if_else(.$Pclass == 1 & .$Sex == 'female', "P1Female", 
                                               if_else(.$Pclass == 2 & .$Sex == 'female', "P2Female", 
                                                       if_else(.$Pclass == 3 & .$Sex == "female", "P3Female", "na"))))))),
-         title = gsub('(.*,)|(\\..*)', '', .$Name))
+         title = str_trim(gsub('(.*,)|(\\..*)', '', .$Name)))
 
-table(train$Sex, train$title)
+table(all$Sex, all$title)
+```
 
+Después de crear la nueva variable hacemos una pequeña tabla donde observamos que hay diferentes títulos que se utilizaron, sin embargo podemos observar que hay algunos más representativos que otros, por lo que agruparemos en categorías más homogéneas el título siendo los miembros de la tripulación, 
+
+Ahora vamos a tratar de relacionar la edad con los títulos para saber cómo podemos agruparlos. 
+
+```{r}
+
+all %>%
+  group_by(title, Age, Sex) %>%
+  summarise(n()) %>%
+  ggplot(aes(x = title, y = Age))+
+  geom_point(aes(colour = Sex))
+
+
+```
+
+Ahora vamos a hacer una variable que nos indique si la persona estaba casada o no, esto lo hacemos con el título que usaba la persona al embarcarse. 
+
+
+
+
+
+
+```{r}
+
+all <- all %>% 
+  mutate(title = factor(if_else(.$title == 'Capt' | .$title == 'Col' | .$title == 'Don' | .$title == 'Dr' | .$title == 'Jonkheer' | .$title == 'Major' | .$title == 'Rev' | .$title == 'Sir' , "rate_title", 
+                                         if_else(.$title == 'Master', "Master", 
+                                                 if_else(.$title == 'Miss', "Miss", "Mr")))))
+ 
 ```
 
 
 
+# El tamaño de la familia
+
+El tamaño de la familia también es una variable que importa segun algunos analistas que ya han explorado esta base de datos, por lo que se creará una variable para estimar el tamaño de la familia con la que viajaban los pasajeros. 
 
 
-En la gráfica anterior observamos diferentes cosas pero primero tenemos que explicar cómo se lee. 
+```{r}
 
-1. Los colores representan si la persona sobrevivió o no, Es rojo si la persona **no sobrevivió** y azúl si la persona **sobrevivió**
+all <- all %>%
+  mutate(Fsize = SibSp+Parch + 1)
 
-2. La gráfica está dividida en dos, del lado derecho están las mujeres y del lado izquierdo los hombres.
 
-Por ejemplo observamos que del lado derecho la barra de color rojo muestra el número 81 y del lado izquierdo muestra 468. Esto quiere decir que, de acuerdo con los datos que tenemos en la tabla test 81 mujeres murieron contra 468 hombres. Esto nos muestra que la variable sexo es un predictor importante debido a la tasa desproporcionada de supervivencia deacuerdo al sexo.
+```
+
+Ahora observamos el comportamiento de esta variable dependiendo de si el pasajero sobrevivió o no.
+
+```{r}
+
+all %>%
+  filter(!is.na(Survived)) %>%
+  group_by(Survived, Fsize) %>%
+  summarise(n()) %>%
+  ggplot(aes(Fsize, `n()`, fill = factor(Survived))) + 
+  geom_bar(stat = 'identity', position = 'dodge') +
+  scale_x_continuous(breaks = c(1:11))
+
+
+```
+
+
+Observamos que hay un claro patron donde el tamaño de la familia con la que se viajaba está relacionado inversamente con la cantidad de personas que sobrevivieron o no. 
 
 Ahora vamos a proseguir con una inspección gráfica de las variables cuantitativas, que son la **Edad (AGE)**  y la **Tarifa (Fare)** 
 
@@ -293,25 +342,26 @@ all %>%
 
 ```
 
-Podemos ver por ejemplo que la edad tiene una distribución casi normal con un sezgo positivo, adicionalmente observamos que la tarifa está sezgada hacia la derecha. Observamos también que las variables tienen algunos datos atípicos principalmente la variable **_fare_**.
+
+Podemos ver por ejemplo que la edad tiene una distribución casi normal con un sezgo positivo, adicionalmente observamos que la tarifa está sezgada hacia la derecha. También que las variables tienen algunos datos atípicos principalmente la variable **_fare_**, esto quiere decir que hay pocas personas que pagaron una tarifa más elevada que los demás pasajeros.
 
 ```{r warning=FALSE, message=FALSE} 
 
-train %>%
+all %>%
   keep(is.numeric) %>%
   select(Age, Fare, Pclass) %>%
   mutate(Age = scale(Age),
          Fare = scale(Fare)) %>%
   gather(key = "key", value = "value", -Pclass) %>%
   ggplot(aes(x= value, fill = factor(Pclass))) +
-  geom_density() +
+  geom_density(aes(alpha = 0.5)) +
   facet_wrap(~key, scales = "free")  +
   theme_classic()
 
 
 ```
 
-Podemos observar que la variable edad tiene un comportamiento casi normal con algunas exepciones o casos atípicos de personas de avanzada edad. La variable que tiene mayores problemas es Fare. Se observa en el histograma que no tiene un comportamiento normal debido a ciertas variables atípicas. Vamos a confirmar esto con un diagrama de hoja y bigotes que nos permite visualizar de mejor manera las observaciones atípicas. 
+Podemos observar que la variable edad tiene un comportamiento casi normal pero hay diferencias significativas respecto a la edad y la clase en la que viajaban los pasajeros. Por ejemplo en primera clase hay una menor densidad de pasajeros y tiene una pequeña joroba a la derecha lo que nos indica que hay más pasajeros de mayor edad en ésta clase. A diferencia de la segunda y tercera clase indicadas en los colores azúl y verde que tienen una joroba un poco más grande a la izquierda, lo que indica que hay un mayor número de pasajeros de corta edad. Osea En primera clase viajaban más personas adultas y en segunda y tercera clase viajaban más personas jóvenes. 
 
 ```{r warning=FALSE, message=FALSE} 
 
@@ -332,41 +382,20 @@ train %>%
 
 Las dos gráficas de caja y bigotes para las variables **Age** y **Fare** se observa que el ticket en primera clase es en promedio más alto que en las dos clases. En tercera clase tenemos algunos tickets que superan el promedio de primera clase. Así mismo observamos un dato importante, en promedio las personas viajando en primera clase son de mayor edad que las de segunda y tercera clase. 
 
+#Estimación de la edad
 
-Suponemos que la variable Fare está relacionada con la clase donde viajan los pasajeros, por lo que vamos a observar los valores mínimos, máximos y desviación estándar de las variables. 
+Observamos entonces que la variable edad es relevante para nuestro análisis, sin embargo tiene una cantidad significativa de valores perdidos por lo que utilizamos una regresión lineal simple para tratar de estimar la edad del pasajero del que no contamos con la edad. 
 
+```{r}
 
-```{r warning=FALSE, message=FALSE}
-
-train %>%
-  filter(Fare != 0) %>%
-  group_by(Pclass) %>%
-  summarise(max = max(Fare, na.rm = TRUE), media = mean(Fare, na.rm = TRUE), min = min(Fare, na.rm = TRUE), sd = sd(Fare, na.rm = TRUE)) %>%
-  gather(estadistico, valor, -Pclass) %>%
-  ggplot(aes(x = estadistico, y = valor, colour = factor(Pclass))) +
-  geom_point(stat = "identity", position = "stack") + 
-  theme_classic()
-
-
+EdadLM <- lm(Age ~ pr + title + Fsize + Survived + Fare, data = all[!is.na(all$Age), ])
+summary(EdadLM)
 
 ```
 
-Observamos en la grafica de arriba que:
-
-* El valor máximo pagado por los boletos es sustancialmente diferente cuando comparamos por clase.
-
-* La diferencia del precio promedio de los boletos es mayor entre primera clase. Segunda y tercera clase la diferencia no es tan grande. 
-
-Hasta ahora hemos observado varias características significativas en las variables que hemos analizado
-
-1. La distribución de la edad entre los pasajeros tiene una distribución casi normal sin embargo hay un pequeño salto en la cantidad de menores que viajan
-
-2. Las personas que viajan en tercera clase son las que tienen una distribución mas normal, las personas viajando en primera clase son en promedio de mayor edad
-
-
-3. En promedio la tarifa pagada por las personas viajando en primera clase es mayor. Sin embargo tienen una distribución más sezgada y con valores atípicos. 
-
-
+```{r}
+all$ageLM <- predict(EdadLM, all)
+```
 
 
 
